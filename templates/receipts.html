@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}الفواتير{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-receipt me-2"></i>الفواتير</h4>
+</div>
+
+<!-- Filters -->
+<div class="card-box mb-3">
+  <form class="row g-2 align-items-end" method="GET">
+    <div class="col-md-3">
+      <label class="form-label text-muted">التاريخ</label>
+      <input type="date" name="date" class="form-control" value="{{ filters.date }}">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label text-muted">رقم الفاتورة</label>
+      <input name="sale_id" class="form-control" value="{{ filters.sale_id }}" placeholder="#">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label text-muted">طريقة الدفع</label>
+      <select name="payment" class="form-select">
+        <option value="">الكل</option>
+        {% for method in ['كاش','فيزا','انستاباي','فودافون كاش','آجل'] %}
+        <option value="{{ method }}" {{ 'selected' if filters.payment == method }}>{{ method }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1 d-grid">
+      <button class="btn btn-primary"><i class="bi bi-search"></i></button>
+    </div>
+    <div class="col-md-1 d-grid">
+      <a href="{{ url_for('reports.receipts_page') }}" class="btn btn-outline-secondary">مسح</a>
+    </div>
+  </form>
+</div>
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-primary-soft"><i class="bi bi-receipt text-primary"></i></div>
+      <div class="stat-label">عدد الفواتير</div>
+      <div class="stat-value text-primary">{{ stats.count }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack text-success"></i></div>
+      <div class="stat-label">إجمالي المبيعات</div>
+      <div class="stat-value text-success">{{ "%.2f"|format(stats.revenue) }} ج</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-warning-soft"><i class="bi bi-tag text-warning"></i></div>
+      <div class="stat-label">إجمالي الخصومات</div>
+      <div class="stat-value text-warning">{{ "%.2f"|format(stats.discount) }} ج</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#f0fdf4">
+        <i class="bi bi-graph-up" style="color:#059669"></i>
+      </div>
+      <div class="stat-label">صافي الربح</div>
+      <div class="stat-value" style="color:#059669">{{ "%.2f"|format(stats.profit) }} ج</div>
+    </div>
+  </div>
+</div>
+
+<!-- Sales table -->
+<div class="card-box p-0">
+  <div class="px-4 py-3 border-bottom d-flex justify-content-between align-items-center">
+    <h6 class="mb-0" style="font-size:1.1rem"><i class="bi bi-list-ul me-2"></i>قائمة الفواتير</h6>
+    <small class="text-muted" style="font-size:1rem">{{ total_sales }} فاتورة</small>
+  </div>
+    <div class="table-responsive table-scroll-y">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>التاريخ والوقت</th>
+          <th>الإجمالي</th>
+          <th>الخصم</th>
+          <th>المدفوع</th>
+          <th>الدفع</th>
+          <th>الحالة</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in sales %}
+        <tr id="sale-row-{{ s.id }}" class="{{ 'opacity-50 text-decoration-line-through' if s.voided }}">
+          <td class="text-muted">{{ s.id }}</td>
+          <td>{{ s.created_at }}</td>
+          <td>{{ "%.2f"|format(s.total) }} ج</td>
+          <td class="text-warning">{{ "%.2f"|format(s.discount) }} ج</td>
+          <td class="fw-bold text-success">{{ "%.2f"|format(s.paid_amount) }} ج</td>
+          <td><span class="badge bg-secondary">{{ s.payment_method }}</span></td>
+          <td>
+            {% if s.voided %}
+              <span class="badge bg-danger">ملغاة</span>
+            {% else %}
+              <span class="badge bg-success">صالحة</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('pos.receipt', sale_id=s.id) }}" target="_blank"
+                 class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-receipt me-1"></i>فاتورة
+              </a>
+              {% if not s.voided %}
+              <button class="btn btn-sm btn-outline-danger"
+                      onclick="voidSale({{ s.id }})"
+                      title="إلغاء الفاتورة واسترجاع المخزون">
+                <i class="bi bi-x-circle"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-4">لا توجد فواتير</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="d-flex justify-content-center align-items-center gap-2 py-3 border-top">
+    {% set base_params = [] %}
+    {% if filters.date %}{% set _ = base_params.append('date=' + filters.date) %}{% endif %}
+    {% if filters.payment %}{% set _ = base_params.append('payment=' + filters.payment) %}{% endif %}
+    {% if filters.sale_id %}{% set _ = base_params.append('sale_id=' + filters.sale_id) %}{% endif %}
+    {% set qs = base_params|join('&') %}
+    {% if page > 1 %}
+      <a href="?{{ qs }}&page={{ page - 1 }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    {% endif %}
+    <span class="text-muted">صفحة {{ page }} من {{ total_pages }}</span>
+    {% if page < total_pages %}
+      <a href="?{{ qs }}&page={{ page + 1 }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function voidSale(id) {
+  if (!confirm(`إلغاء الفاتورة #${id}؟ سيتم استرجاع الكميات للمخزون.`)) return;
+  const res  = await fetch(`/api/sale/${id}/void`, { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    const row = document.getElementById(`sale-row-${id}`);
+    if (row) {
+      row.style.opacity = '0.4';
+      row.style.textDecoration = 'line-through';
+      row.querySelectorAll('button').forEach(b => b.disabled = true);
+      const statusCell = row.querySelectorAll('td')[6];
+      if (statusCell) statusCell.innerHTML = '<span class="badge bg-danger">ملغاة</span>';
+    }
+    alert(data.message);
+  } else {
+    alert(data.message || 'حدث خطأ');
+  }
+}
+</script>
+{% endblock %}

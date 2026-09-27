@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}الجرد السريع{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>جرد سريع</h4>
+  <a href="{{ url_for('inventory.stock_page') }}" class="btn btn-outline-primary">سجل حركة المخزون</a>
+</div>
+<div class="card-box mb-3">
+  <form method="POST" class="row g-2 align-items-end">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="col-md-4">
+      <label class="form-label">باركود / كود المنتج</label>
+      <input name="barcode" class="form-control font-monospace" autofocus required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label">الكمية الفعلية</label>
+      <input name="actual_quantity" type="number" min="0" class="form-control" placeholder="اتركها فارغة للبحث فقط">
+    </div>
+    <div class="col-md-2 d-grid">
+      <button class="btn btn-success">تسجيل الجرد</button>
+    </div>
+  </form>
+</div>
+{% if scanned %}
+<div class="alert alert-info">المنتج: <strong>{{ scanned.name }}</strong> | الكمية الحالية: {{ scanned.quantity }}</div>
+{% endif %}
+<div class="card-box">
+  <h6 class="card-box-title">آخر حركات المخزون</h6>
+  <div class="table-responsive table-scroll-y">
+    <table class="table table-sm">
+      <thead><tr><th>التاريخ</th><th>المنتج</th><th>النوع</th><th>الحركة</th><th>قبل</th><th>بعد</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+      {% for m in movements %}
+      <tr><td>{{ m.created_at }}</td><td>{{ m.product_name }}</td><td>{{ m.movement_type }}</td><td>{{ m.quantity }}</td><td>{{ m.old_quantity }}</td><td>{{ m.new_quantity }}</td><td>{{ m.notes }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

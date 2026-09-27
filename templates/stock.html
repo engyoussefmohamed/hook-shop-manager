@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}حركة المخزون{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-list-check me-2"></i>سجل حركة المخزون</h4>
+  <a href="{{ url_for('inventory.inventory_page') }}" class="btn btn-outline-secondary">الجرد السريع</a>
+</div>
+<div class="card-box mb-3">
+  <form method="GET" class="row g-2">
+    <div class="col-md-5">
+      <select name="product_id" class="form-select">
+        <option value="">كل المنتجات</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {{ 'selected' if selected_product_id|string == p.id|string }}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-grid"><button class="btn btn-primary">عرض</button></div>
+  </form>
+</div>
+<div class="card-box p-0">
+  <div class="table-responsive table-scroll-y">
+    <table class="table table-hover align-middle">
+      <thead><tr><th>التاريخ</th><th>المنتج</th><th>النوع</th><th>الكمية</th><th>قبل</th><th>بعد</th><th>مرجع</th><th>ملاحظات</th></tr></thead>
+      <tbody>
+      {% for m in movements %}
+      <tr><td>{{ m.created_at }}</td><td>{{ m.product_name }}</td><td><span class="badge bg-secondary">{{ m.movement_type }}</span></td><td>{{ m.quantity }}</td><td>{{ m.old_quantity }}</td><td>{{ m.new_quantity }}</td><td>{{ m.ref_type }} #{{ m.ref_id or '' }}</td><td>{{ m.notes }}</td></tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center text-muted py-4">لا توجد حركات</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

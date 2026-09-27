@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}فحص البرنامج{% endblock %}
+{% block content %}
+<div class="page-header"><h4 class="mb-0"><i class="bi bi-tools me-2"></i>فحص وإصلاح البرنامج</h4></div>
+<div class="card-box">
+  <div class="table-scroll-y">
+  <table class="table align-middle">
+    <thead><tr><th>البند</th><th>الحالة</th><th>التفاصيل</th></tr></thead>
+    <tbody>
+    {% for name, ok, msg in checks %}
+    <tr>
+      <td class="fw-bold">{{ name }}</td>
+      <td><span class="badge {{ 'bg-success' if ok else 'bg-danger' }}" style="font-size:.95rem; padding:6px 14px">{{ 'سليم' if ok else 'مشكلة' }}</span></td>
+      <td style="font-size:1rem">{{ msg }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}

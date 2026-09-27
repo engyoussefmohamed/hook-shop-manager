@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}موردين ومشتريات{% endblock %}
+{% block content %}
+<div class="page-header"><h4 class="mb-0"><i class="bi bi-truck me-2"></i>موردين ومشتريات</h4></div>
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card-box mb-3">
+      <h6 class="card-box-title">إضافة مورد</h6>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="supplier">
+        <label class="form-label fw-semibold">اسم المورد</label>
+        <input name="name" class="form-control mb-2" placeholder="اسم المورد" required style="font-size:1.05rem">
+        <label class="form-label fw-semibold">تليفون</label>
+        <input name="phone" class="form-control mb-2" placeholder="تليفون" style="font-size:1.05rem">
+        <label class="form-label fw-semibold">ملاحظات</label>
+        <textarea name="notes" class="form-control mb-2" placeholder="ملاحظات" style="font-size:1.05rem"></textarea>
+        <button class="btn btn-md btn-success w-100">حفظ</button>
+      </form>
+    </div>
+    <div class="card-box">
+      <h6 class="card-box-title">الموردين</h6>
+      {% for s in suppliers %}
+      <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+        <div style="flex:1">
+          <span style="font-size:1rem" class="fw-bold">{{ s.name }}</span>
+          {% if s.phone %}<div class="text-muted" style="font-size:.85rem">{{ s.phone }}</div>{% endif %}
+          <strong class="{{ 'text-danger' if s.balance else '' }}" style="font-size:.95rem">{{ "%.2f"|format(s.balance) }} ج</strong>
+        </div>
+        <div class="d-flex gap-1 align-items-center">
+          {% if s.balance > 0 %}
+          <form method="POST" class="d-inline-flex gap-1 align-items-center">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="pay">
+            <input type="hidden" name="id" value="{{ s.id }}">
+            <input name="amount" type="number" min="0" step="0.01" max="{{ s.balance }}" class="form-control form-control-sm" placeholder="المبلغ" style="width:80px;font-size:.85rem" required>
+            <button class="btn btn-sm btn-outline-success" title="تسجيل دفع"><i class="bi bi-cash"></i></button>
+          </form>
+          {% endif %}
+          <button type="button" class="btn btn-sm btn-outline-primary" title="تعديل"
+            onclick="openEditSupplier({{ s.id }}, {{ s.name|tojson }}, {{ s.phone|tojson }}, {{ s.notes|tojson }})"><i class="bi bi-pencil"></i></button>
+          <form method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف {{ s.name }}؟')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="{{ s.id }}">
+            <button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+      </div>
+      {% else %}<p class="text-muted">لا يوجد موردين</p>{% endfor %}
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card-box mb-3">
+      <h6 class="card-box-title">تسجيل شراء</h6>
+      <form method="POST" id="purchase-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="purchase">
+        <div class="row g-2 mb-2">
+          <div class="col-md-5">
+            <label class="form-label fw-semibold">المورد</label>
+            <select name="supplier_id" class="form-select">
+              <option value="">بدون مورد</option>
+              {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-semibold">المدفوع</label>
+            <input name="paid" type="number" step="0.01" min="0" class="form-control" placeholder="المدفوع" style="font-size:1.05rem">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">ملاحظات</label>
+            <input name="notes" class="form-control" placeholder="ملاحظات" style="font-size:1.05rem">
+          </div>
+        </div>
+        <div id="purchase-items">
+          <div class="row g-2 mb-1 purchase-row">
+            <div class="col-md-6"><select name="product_id" class="form-select"><option value="">اختر منتج</option>{% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}</select></div>
+            <div class="col-md-3"><input name="quantity" type="number" min="1" step="1" class="form-control" placeholder="كمية" style="font-size:1.05rem"></div>
+            <div class="col-md-2"><input name="unit_cost" type="number" min="0" step="0.01" class="form-control" placeholder="تكلفة" style="font-size:1.05rem"></div>
+            <div class="col-md-1 d-grid"><button type="button" class="btn btn-sm btn-outline-danger remove-row" title="حذف"><i class="bi bi-x-lg"></i></button></div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+          <button type="button" class="btn btn-md btn-outline-secondary" onclick="addPurchaseRow()"><i class="bi bi-plus-lg me-1"></i>إضافة منتج</button>
+          <button type="submit" class="btn btn-md btn-primary"><i class="bi bi-check2-circle me-1"></i>تسجيل وتحديث المخزون</button>
+        </div>
+      </form>
+    </div>
+    <div class="card-box p-0">
+      <div class="table-scroll-y">
+      <table class="table">
+        <thead><tr><th>التاريخ</th><th>المورد</th><th>الإجمالي</th><th>المدفوع</th><th>ملاحظات</th></tr></thead>
+        <tbody>{% for p in purchases %}<tr><td>{{ p.created_at }}</td><td>{{ p.supplier_name or '-' }}</td><td>{{ "%.2f"|format(p.total) }} ج</td><td>{{ "%.2f"|format(p.paid) }} ج</td><td>{{ p.notes }}</td></tr>{% endfor %}</tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Supplier Modal -->
+<div class="modal fade" id="editSupplierModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="id" id="es-id">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i>تعديل المورد</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">اسم المورد</label>
+          <input name="name" id="es-name" class="form-control mb-2" required style="font-size:1.05rem">
+          <label class="form-label fw-semibold">تليفون</label>
+          <input name="phone" id="es-phone" class="form-control mb-2" style="font-size:1.05rem">
+          <label class="form-label fw-semibold">ملاحظات</label>
+          <textarea name="notes" id="es-notes" class="form-control" style="font-size:1.05rem"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-md" data-bs-dismiss="modal">إغلاق</button>
+          <button type="submit" class="btn btn-success btn-md"><i class="bi bi-check2-circle me-1"></i>حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const productOptions = `{% for p in products %}<option value="{{ p.id }}">{{ p.name }}</option>{% endfor %}`;
+
+function addPurchaseRow() {
+  const container = document.getElementById('purchase-items');
+  const row = document.createElement('div');
+  row.className = 'row g-2 mb-1 purchase-row';
+  row.innerHTML = `
+    <div class="col-md-6"><select name="product_id" class="form-select"><option value="">اختر منتج</option>${productOptions}</select></div>
+    <div class="col-md-3"><input name="quantity" type="number" min="1" step="1" class="form-control" placeholder="كمية" style="font-size:1.05rem"></div>
+    <div class="col-md-2"><input name="unit_cost" type="number" min="0" step="0.01" class="form-control" placeholder="تكلفة" style="font-size:1.05rem"></div>
+    <div class="col-md-1 d-grid"><button type="button" class="btn btn-sm btn-outline-danger remove-row" title="حذف"><i class="bi bi-x-lg"></i></button></div>
+  `;
+  container.appendChild(row);
+  row.querySelector('.remove-row').addEventListener('click', () => row.remove());
+}
+
+document.querySelectorAll('.remove-row').forEach(btn => {
+  btn.addEventListener('click', () => btn.closest('.purchase-row').remove());
+});
+
+function openEditSupplier(id, name, phone, notes) {
+  document.getElementById('es-id').value = id;
+  document.getElementById('es-name').value = name;
+  document.getElementById('es-phone').value = phone;
+  document.getElementById('es-notes').value = notes;
+  new bootstrap.Modal(document.getElementById('editSupplierModal')).show();
+}
+</script>
+{% endblock %}

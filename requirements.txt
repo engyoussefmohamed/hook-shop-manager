@@ -1,0 +1,14 @@
+Flask==3.0.3
+Flask-WTF>=1.2.0
+qrcode[pil]==7.4.2
+Pillow>=11.0.0
+arabic-reshaper==3.0.0
+python-bidi==0.4.2
+schedule==1.2.2
+pywin32
+python-barcode[images]
+google-auth-oauthlib
+google-api-python-client
+google-auth-httplib2
+openpyxl
+waitress

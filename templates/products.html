@@ -1,0 +1,349 @@
+{% extends "base.html" %}
+{% block title %}المنتجات{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-box-seam me-2"></i>إدارة المنتجات</h4>
+  <div class="d-flex gap-2">
+    <form method="POST" action="{{ url_for('products.products_import') }}" enctype="multipart/form-data" class="d-flex gap-1">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="file" name="file" accept=".xlsx,.xlsm" class="form-control" style="width:180px" required>
+      <button type="submit" class="btn btn-md btn-outline-success">
+        <i class="bi bi-upload me-1"></i>استيراد
+      </button>
+    </form>
+    <a href="{{ url_for('products.products_export') }}" class="btn btn-md btn-outline-success">
+      <i class="bi bi-file-earmark-excel me-1"></i>تصدير
+    </a>
+    <a href="{{ url_for('products.products', low=1) }}" class="btn btn-md btn-outline-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i>الناقص
+    </a>
+    <button type="button" class="btn btn-md btn-outline-secondary" onclick="printSelectedBarcodes()">
+      <i class="bi bi-printer me-1"></i>طباعة المحدد
+    </button>
+    <a href="{{ url_for('products.products_add') }}" class="btn btn-md btn-success">
+      <i class="bi bi-plus-lg me-1"></i>إضافة منتج
+    </a>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="card-box mb-3">
+  <form class="row g-2 align-items-end" method="GET">
+    <div class="col-md-5">
+      <input type="text" name="q" class="form-control" placeholder="ابحث باسم المنتج أو الباركود..."
+             value="{{ search }}">
+    </div>
+    <div class="col-md-4">
+      <select name="category" class="form-select">
+        <option value="">كل الفئات</option>
+        {% for cat in categories %}
+          <option value="{{ cat }}" {{ 'selected' if selected_category == cat }}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+      <button type="submit" class="btn btn-md btn-primary flex-fill">
+        <i class="bi bi-search me-1"></i>بحث
+      </button>
+      <a href="{{ url_for('products.products') }}" class="btn btn-md btn-outline-secondary">مسح</a>
+    </div>
+  </form>
+</div>
+
+<!-- Bulk actions bar (appears when rows are checked) -->
+<div id="bulk-actions" class="d-none d-flex align-items-center gap-2 mb-2 p-2 rounded"
+     style="background:#fff3cd;border:1px solid #ffc107">
+  <i class="bi bi-check2-square text-warning fs-5"></i>
+  <span class="fw-semibold" id="selected-count">0 محدد</span>
+  <button class="btn btn-sm btn-danger" onclick="bulkDelete()">
+    <i class="bi bi-trash me-1"></i>حذف المحدد
+  </button>
+</div>
+
+<!-- Table -->
+<div class="card-box p-0">
+  <div class="table-responsive table-scroll-y">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th style="width:36px"><input type="checkbox" class="form-check-input" onclick="toggleAllProducts(this)"></th>
+          <th>المنتج</th>
+          <th>الفئة</th>
+          <th>سعر البيع</th>
+          <th>سعر التكلفة</th>
+          <th>الكمية</th>
+          <th>حد التنبيه</th>
+          <th>الباركود</th>
+          <th>QR</th>
+          <th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr class="{{ 'table-warning' if p.quantity <= p.min_stock and p.quantity > 0 else ('table-danger' if p.quantity == 0 else '') }}">
+          <td><input type="checkbox" class="form-check-input product-check"
+                     data-id="{{ p.id }}" data-name="{{ p.name }}" data-barcode="{{ p.barcode }}"
+                     onchange="updateBulkActions()"></td>
+          <td class="fw-semibold">{{ p.name }}</td>
+          <td><span class="badge bg-secondary">{{ p.category }}</span></td>
+          <td class="fw-bold text-success">{{ "%.2f"|format(p.price) }} ج</td>
+          <td class="text-muted">{{ "%.2f"|format(p.cost_price) }} ج</td>
+          <td>
+            <input type="number" min="0" value="{{ p.quantity }}"
+                   class="form-control form-control-sm text-center qty-inline"
+                   style="width:72px;font-size:.95rem;border-color:{% if p.quantity == 0 %}#ef4444{% elif p.quantity <= p.min_stock %}#f59e0b{% else %}#e2e8f0{% endif %}"
+                   data-pid="{{ p.id }}" data-orig="{{ p.quantity }}"
+                   onchange="saveProductQty(this)">
+          </td>
+          <td class="text-muted">{{ p.min_stock }}</td>
+          <td>
+            <a href="{{ url_for('products.products_barcode', pid=p.id) }}"
+               class="font-monospace text-muted text-decoration-none barcode-view-btn"
+               onclick="return showBarcode({{ p.name|tojson }}, {{ p.barcode|tojson }}, this.href)"
+               target="_blank"
+               title="عرض الباركود">
+              {{ p.barcode }}
+            </a>
+          </td>
+          <td>
+            <a href="{{ url_for('products.products_barcode', pid=p.id) }}"
+               class="btn btn-md btn-outline-secondary"
+               onclick="return showBarcode({{ p.name|tojson }}, {{ p.barcode|tojson }}, this.href)"
+               target="_blank"
+               title="عرض الباركود">
+              <i class="bi bi-qr-code"></i>
+            </a>
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('products.products_edit', pid=p.id) }}"
+                 class="btn btn-md btn-outline-primary"><i class="bi bi-pencil"></i></a>
+              <form method="POST" action="{{ url_for('products.products_delete', pid=p.id) }}"
+                    onsubmit="return confirm('حذف {{ p.name }}؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-md btn-outline-danger">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="10" class="text-center text-muted py-4">لا توجد منتجات</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div class="d-flex justify-content-center align-items-center gap-2 py-3 border-top">
+    {% if page > 1 %}
+      <a href="?q={{ search }}&category={{ selected_category }}&page={{ page - 1 }}"
+         class="btn btn-md btn-outline-secondary">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+    {% endif %}
+    <span class="text-muted" style="font-size:1rem">صفحة {{ page }} من {{ total_pages }}</span>
+    {% if page < total_pages %}
+      <a href="?q={{ search }}&category={{ selected_category }}&page={{ page + 1 }}"
+         class="btn btn-md btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+<div class="text-muted mt-2" style="font-size:1rem">إجمالي: {{ total }} منتج</div>
+
+<!-- ── Barcode Modal ──────────────────────────────────────────────────────────── -->
+<div class="modal fade" id="qrModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered" style="max-width:380px">
+    <div class="modal-content text-center">
+      <div class="modal-header border-0 pb-0">
+        <h6 class="modal-title fw-bold w-100" id="qr-product-name"></h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body py-3">
+        <img id="qr-img" src="" alt="باركود" class="img-fluid" style="max-width:320px">
+        <p class="font-monospace text-muted small mt-1 mb-0" id="qr-barcode"></p>
+      </div>
+      <div class="modal-footer border-0 pt-0 justify-content-center gap-2">
+        <a id="qr-download" href="#" download class="btn btn-md btn-outline-primary">
+          <i class="bi bi-download me-1"></i>تحميل
+        </a>
+        <button onclick="printQR()" class="btn btn-md btn-outline-secondary">
+          <i class="bi bi-printer me-1"></i>طباعة
+        </button>
+        <button type="button" class="btn btn-md btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showBarcode(name, barcode, src) {
+  const title = document.getElementById('qr-product-name');
+  const label = document.getElementById('qr-barcode');
+  const image = document.getElementById('qr-img');
+  const link = document.getElementById('qr-download');
+  const modalEl = document.getElementById('qrModal');
+
+  if (!title || !label || !image || !link || !modalEl) {
+    window.open(src, '_blank');
+    return false;
+  }
+
+  title.textContent = name;
+  label.textContent = barcode;
+  image.onerror = () => window.open(src, '_blank');
+  image.src = src;
+  link.href = src;
+  link.setAttribute('download', `${barcode || 'منتج'}.png`);
+
+  if (window.bootstrap && typeof window.bootstrap.Modal === 'function') {
+    new bootstrap.Modal(modalEl).show();
+  } else {
+    window.open(src, '_blank');
+  }
+
+  return false;
+}
+
+const showQR = showBarcode;
+
+function toggleAllProducts(source) {
+  document.querySelectorAll('.product-check').forEach(ch => { ch.checked = source.checked; });
+  updateBulkActions();
+}
+
+function updateBulkActions() {
+  const selected = document.querySelectorAll('.product-check:checked');
+  const bar   = document.getElementById('bulk-actions');
+  const count = document.getElementById('selected-count');
+  if (bar)   bar.classList.toggle('d-none', !selected.length);
+  if (count) count.textContent = selected.length + ' محدد';
+}
+
+function saveProductQty(input) {
+  const pid = input.dataset.pid;
+  const qty = parseInt(input.value, 10);
+  if (isNaN(qty) || qty < 0) { input.value = input.dataset.orig; return; }
+  fetch(`/api/product/${pid}/quantity`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+    },
+    body: JSON.stringify({ quantity: qty })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      input.dataset.orig = qty;
+      input.style.borderColor = '#22c55e';
+      setTimeout(() => input.style.borderColor = qty === 0 ? '#ef4444' : (qty <= 5 ? '#f59e0b' : '#e2e8f0'), 1500);
+    } else {
+      input.value = input.dataset.orig;
+      alert(d.error || 'تعذر تحديث الكمية');
+    }
+  })
+  .catch(() => { input.value = input.dataset.orig; });
+}
+
+function bulkDelete() {
+  const selected = [...document.querySelectorAll('.product-check:checked')];
+  if (!selected.length) return;
+  if (!confirm(`حذف ${selected.length} منتج؟ هذا الإجراء لا يمكن التراجع عنه.`)) return;
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/products/bulk-delete';
+  const csrf = document.createElement('input');
+  csrf.type  = 'hidden';
+  csrf.name  = 'csrf_token';
+  csrf.value = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  form.appendChild(csrf);
+  selected.forEach(ch => {
+    const inp = document.createElement('input');
+    inp.type  = 'hidden';
+    inp.name  = 'ids';
+    inp.value = ch.dataset.id;
+    form.appendChild(inp);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+
+/* Live search */
+(function () {
+  const qInput = document.querySelector('input[name="q"]');
+  if (!qInput) return;
+  let timer;
+  qInput.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => qInput.closest('form')?.submit(), 400);
+  });
+})();
+
+function printSelectedBarcodes() {
+  const selected = [...document.querySelectorAll('.product-check:checked')];
+  if (!selected.length) {
+    alert('حدد منتج واحد على الأقل');
+    return;
+  }
+  const labels = selected.map(ch => ({
+    id: ch.dataset.id,
+    name: ch.dataset.name,
+    barcode: ch.dataset.barcode
+  }));
+  const w = window.open('', '_blank', 'width=800,height=700');
+  w.document.write(`
+    <html dir="rtl"><head><title>طباعة باركود</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:12px}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+      .label{border:1px dashed #bbb;text-align:center;padding:8px;break-inside:avoid}
+      .label strong{font-size:12px}
+      .label img{max-width:190px;width:100%}
+      .code{font-family:monospace;font-size:11px;color:#555}
+      @media print{button{display:none}.label{page-break-inside:avoid}}
+    </style></head><body>
+    <button onclick="window.print()" style="margin-bottom:10px">طباعة</button>
+    <div class="grid">
+      ${labels.map(item => `
+        <div class="label">
+          <strong>${escapeText(item.name)}</strong><br>
+          <img src="/products/${item.id}/barcode"><br>
+          <div class="code">${escapeText(item.barcode)}</div>
+        </div>
+      `).join('')}
+    </div></body></html>`);
+  w.document.close();
+  w.focus();
+}
+
+function escapeText(value) {
+  return String(value || '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function printQR() {
+  const img  = document.getElementById('qr-img').src;
+  const name = document.getElementById('qr-product-name').textContent;
+  const w    = window.open('', '_blank', 'width=400,height=300');
+  w.document.write(`
+    <html><body style="text-align:center;font-family:sans-serif;padding:20px">
+      <strong style="font-size:14px">${name}</strong><br><br>
+      <img src="${img}" style="width:280px"><br>
+    </body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); w.close(); }, 400);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <title>{% block title %}نظام المحل{% endblock %} | {{ shop_name }}</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-local.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/icons-local.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- ── Mobile overlay ───────────────────────────────────────────────────── -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- ── Mobile topbar ────────────────────────────────────────────────────── -->
+<nav class="mobile-topbar">
+  <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="القائمة">
+    <i class="bi bi-list" id="hamburgerIcon"></i>
+  </button>
+  <span class="mobile-shop-name">{{ shop_name }}</span>
+</nav>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="mainSidebar">
+  <div class="sidebar-brand">
+    <i class="bi bi-shop-window fs-4"></i>
+    <span class="brand-text">{{ shop_name }}</span>
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="إغلاق">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+
+  <nav class="sidebar-nav">
+    {% if current_user and is_admin %}
+      <div class="nav-section">مهام سريعة</div>
+      <a href="{{ url_for('pos.index') }}"
+         class="nav-item {% if request.endpoint == 'pos.index' %}active{% endif %}">
+        <i class="bi bi-lightning-charge"></i><span>البداية</span>
+      </a>
+
+      <div class="nav-section">البيع والفواتير</div>
+      <a href="{{ url_for('pos.pos') }}"
+         class="nav-item {% if request.endpoint == 'pos.pos' %}active{% endif %}">
+        <i class="bi bi-cart3"></i><span>نقطة البيع</span>
+      </a>
+      <a href="{{ url_for('inventory.returns_page') }}"
+         class="nav-item {% if request.endpoint == 'inventory.returns_page' %}active{% endif %}">
+        <i class="bi bi-arrow-return-left"></i><span>إرجاع/استبدال</span>
+      </a>
+
+      <div class="nav-section">المنتجات</div>
+      <a href="{{ url_for('products.products') }}"
+         class="nav-item {% if request.endpoint in ['products.products','products.products_add','products.products_edit'] %}active{% endif %}">
+        <i class="bi bi-box-seam"></i><span>المنتجات</span>
+      </a>
+
+      <div class="nav-section">التقارير</div>
+      <a href="{{ url_for('reports.reports') }}"
+         class="nav-item {% if request.endpoint == 'reports.reports' %}active{% endif %}">
+        <i class="bi bi-graph-up-arrow"></i><span>التقارير</span>
+      </a>
+      <a href="{{ url_for('reports.receipts_page') }}"
+         class="nav-item {% if request.endpoint == 'reports.receipts_page' %}active{% endif %}">
+        <i class="bi bi-receipt"></i><span>الفواتير</span>
+      </a>
+
+      <div class="nav-section">الإعدادات والصيانة</div>
+      <a href="{{ url_for('settings.settings') }}"
+         class="nav-item {% if request.endpoint == 'settings.settings' %}active{% endif %}">
+        <i class="bi bi-gear"></i><span>الإعدادات</span>
+      </a>
+      <a href="{{ url_for('maintenance.maintenance_page') }}"
+         class="nav-item {% if request.endpoint == 'maintenance.maintenance_page' %}active{% endif %}">
+        <i class="bi bi-tools"></i><span>فحص البرنامج</span>
+      </a>
+    {% else %}
+      <a href="{{ url_for('pos.pos') }}"
+         class="nav-item {% if request.endpoint == 'pos.pos' %}active{% endif %}">
+        <i class="bi bi-cart3"></i><span>نقطة البيع</span>
+      </a>
+      <a href="{{ url_for('inventory.returns_page') }}"
+         class="nav-item {% if request.endpoint == 'inventory.returns_page' %}active{% endif %}">
+        <i class="bi bi-arrow-return-left"></i><span>إرجاع/استبدال</span>
+      </a>
+    {% endif %}
+  </nav>
+
+  <div class="sidebar-footer">
+    {% if current_user and is_admin %}
+      <div class="small mb-2">{{ current_user.username }} · مدير</div>
+      <a href="{{ url_for('auth.logout') }}" class="btn btn-sm btn-outline-light w-100">خروج</a>
+    {% else %}
+      <a href="{{ url_for('auth.login', next=url_for('pos.index')) }}" class="btn btn-sm btn-outline-light w-100">
+        <i class="bi bi-shield-lock me-1"></i>دخول المدير
+      </a>
+    {% endif %}
+    <small class="text-muted">v1.0</small>
+    <small class="text-muted d-block mt-1" style="font-size:0.7rem;line-height:1.4;">
+      Developed by Youssef Abdelnabi<br>
+      <i class="bi bi-telephone-fill" style="font-size:0.65rem;"></i> 01153306833
+    </small>
+  </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────────────── -->
+<main class="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="flash-container">
+        {% for cat, msg in messages %}
+          <div class="alert alert-{{ 'success' if cat == 'success' else 'danger' }} alert-dismissible fade show shadow-sm">
+            <i class="bi bi-{{ 'check-circle-fill' if cat == 'success' else 'exclamation-triangle-fill' }} me-2"></i>{{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</main>
+
+
+
+<script src="{{ url_for('static', filename='js/ui-local.js') }}"></script>
+{% block extra_js %}{% endblock %}
+
+<script>
+function toggleSidebar() {
+  const sidebar = document.getElementById('mainSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const icon    = document.getElementById('hamburgerIcon');
+  const isOpen  = sidebar.classList.toggle('open');
+  overlay.classList.toggle('visible', isOpen);
+  if (icon) icon.className = isOpen ? 'bi bi-x-lg' : 'bi bi-list';
+}
+function closeSidebar() {
+  const sidebar = document.getElementById('mainSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const icon    = document.getElementById('hamburgerIcon');
+  sidebar.classList.remove('open');
+  overlay.classList.remove('visible');
+  if (icon) icon.className = 'bi bi-list';
+}
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.nav-item').forEach(function(a) {
+    a.addEventListener('click', function() {
+      if (window.innerWidth <= 576) closeSidebar();
+    });
+  });
+});
+</script>
+</body>
+</html>

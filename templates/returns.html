@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}المرتجعات{% endblock %}
+
+{% block extra_css %}
+<style>
+  .sale-summary { background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5eaf2; }
+  .sale-summary-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .sale-summary-header h5 { margin: 0; color: #1a1f36; font-size: 1.15rem; }
+  .sale-summary-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .sale-summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .sale-stat { text-align: center; padding: 12px; background: #fff; border-radius: 10px; border: 1px solid #e5eaf2; }
+  .sale-stat-label { display: block; color: #94a3b8; font-size: .85rem; margin-bottom: 4px; }
+  .sale-stat-value { display: block; font-size: 1.2rem; font-weight: 800; color: #1a1f36; }
+
+  .sale-items-list { display: flex; flex-direction: column; gap: 12px; }
+  .sale-item-card { background: #fff; border-radius: 12px; padding: 16px; border: 2px solid #e5eaf2; transition: border-color .2s; }
+  .sale-item-card.item-available { border-color: #bbf7d0; }
+  .sale-item-card.item-partial { border-color: #fde68a; background: #fffdf5; }
+  .sale-item-card.item-fully-returned { border-color: #e2e8f0; opacity: .7; background: #f8fafc; }
+  .sale-item-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+  .sale-item-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sale-item-actions { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid #f1f5f9; }
+  .action-label { font-size: .85rem; font-weight: 600; color: #64748b; min-width: 50px; }
+  .action-qty { width: 65px !important; font-size: .95rem; }
+  .action-notes { width: 120px; font-size: .9rem; }
+
+  .return-action-group, .exchange-action-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+  .exchange-search-wrap { position: relative; min-width: 180px; }
+  .exchange-search-input { width: 100%; }
+  .exchange-dropdown { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.12); z-index: 100; max-height: 240px; overflow-y: auto; }
+  .exchange-option { padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; font-size: .95rem; }
+  .exchange-option:hover { background: #f0fdf4; }
+  .exchange-option-name { font-weight: 600; }
+  .exchange-option-meta { color: #94a3b8; font-size: .85rem; }
+  .exchange-selected-product { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f0fdf4; border-radius: 8px; font-size: .95rem; flex-wrap: wrap; }
+  .exchange-price-diff { padding: 4px 0; }
+
+  .return-row { padding: 14px 0; border-bottom: 1px solid #f1f5f9; }
+  .return-row:last-child { border-bottom: none; }
+  .return-row-top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .return-row-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .return-row-right { display: flex; align-items: center; gap: 8px; }
+  .return-row-amount { font-weight: 700; font-size: 1rem; }
+  .return-row-product { font-size: .95rem; }
+  .return-row-bottom { display: flex; gap: 12px; font-size: .85rem; margin-top: 4px; flex-wrap: wrap; }
+
+  .empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; }
+  .empty-state i { font-size: 3rem; display: block; margin-bottom: 12px; }
+  .empty-state p { font-size: 1.05rem; margin: 0; }
+
+  .sale-search-card { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .sale-search-card .form-group { flex: 1; min-width: 200px; }
+
+  .history-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .history-filters .form-group { flex: 1; min-width: 140px; }
+
+  @media (max-width: 768px) {
+    .sale-summary-header { flex-direction: column; align-items: stretch; }
+    .sale-summary-actions { justify-content: stretch; }
+    .sale-summary-actions .btn { flex: 1; }
+    .sale-summary-stats { grid-template-columns: repeat(2, 1fr); }
+    .return-action-group, .exchange-action-group { flex-direction: column; align-items: stretch; }
+    .action-qty, .action-notes, .exchange-search-wrap { width: 100% !important; }
+    .sale-item-header { flex-direction: column; align-items: flex-start; }
+    .return-row-top { flex-direction: column; align-items: flex-start; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-arrow-return-left me-2"></i>مرتجعات واستبدال</h4>
+</div>
+
+<!-- Sale Search -->
+<div class="card-box mb-3">
+  <form id="sale-search-form" class="sale-search-card">
+    <div class="form-group">
+      <label class="form-label fw-semibold">رقم الفاتورة</label>
+      <input id="sale-id-input" name="sale_id" class="form-control" value="{{ sale_id }}"
+             placeholder="اكتب رقم الفاتورة..." style="font-size:1.05rem" autocomplete="off">
+    </div>
+    <div style="padding-bottom:2px">
+      <button class="btn btn-md btn-primary" type="submit"><i class="bi bi-search me-1"></i>فتح</button>
+    </div>
+  </form>
+</div>
+
+<!-- Sale Details (AJAX loaded) -->
+<div id="sale-details">
+  {% if sale %}
+    <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+  {% else %}
+    <div class="empty-state">
+      <i class="bi bi-receipt"></i>
+      <p>اكتب رقم الفاتورة واضغط "فتح" لعرض التفاصيل</p>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Return History -->
+<div class="card-box">
+  <h6 class="card-box-title"><i class="bi bi-clock-history me-2"></i>آخر عمليات المرتجعات</h6>
+  <div class="history-filters">
+    <div class="form-group">
+      <input type="text" id="history-search" class="form-control" placeholder="بحث بالمنتج أو رقم الفاتورة..." style="font-size:.95rem">
+    </div>
+    <div class="form-group" style="min-width:120px;flex:.5">
+      <input type="date" id="history-date-from" class="form-control" style="font-size:.9rem">
+    </div>
+    <div class="form-group" style="min-width:120px;flex:.5">
+      <input type="date" id="history-date-to" class="form-control" style="font-size:.9rem">
+    </div>
+    <div style="padding-bottom:2px">
+      <button class="btn btn-sm btn-primary" onclick="searchHistory()"><i class="bi bi-search"></i></button>
+    </div>
+  </div>
+  <div id="return-history-body">
+    <div class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+  </div>
+  <div id="history-pagination"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>const HOOK_IS_ADMIN = {{ is_admin | tojson }};</script>
+<script src="{{ url_for('static', filename='js/returns.js') }}"></script>
+{% endblock %}

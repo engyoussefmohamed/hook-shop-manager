@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+{% block title %}الإعدادات{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-gear me-2"></i>الإعدادات</h4>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+
+    <!-- Shop Info -->
+    <div class="card-box mb-3">
+      <h6 class="card-box-title"><i class="bi bi-shop me-2"></i>بيانات المحل</h6>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label fw-semibold">اسم المحل</label>
+            <input type="text" name="shop_name" class="form-control"
+                   value="{{ settings.shop_name }}" style="font-size:1.05rem">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">العنوان</label>
+            <input type="text" name="shop_address" class="form-control"
+                   value="{{ settings.shop_address }}" style="font-size:1.05rem">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">رقم التليفون</label>
+            <input type="text" name="shop_phone" class="form-control"
+                   value="{{ settings.shop_phone }}" style="font-size:1.05rem">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">حد تنبيه المخزون</label>
+            <input type="number" name="low_stock_threshold" class="form-control" min="1"
+                   value="{{ settings.low_stock_threshold }}" style="font-size:1.05rem">
+            <div class="form-text">ينبهك لما الكمية تقل عن هذا العدد</div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">خدمة %</label>
+            <input type="number" name="service_percent" class="form-control" min="0" step="0.01"
+                   value="{{ settings.service_percent or 0 }}" style="font-size:1.05rem">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">ضريبة %</label>
+            <input type="number" name="tax_percent" class="form-control" min="0" step="0.01"
+                   value="{{ settings.tax_percent or 0 }}" style="font-size:1.05rem">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">نص المرتجع (يظهر في الفاتورة)</label>
+            <input type="text" name="return_policy" class="form-control"
+                   value="{{ settings.return_policy or 'مرتجع خلال يومين من تاريخ الفاتورة' }}"
+                   placeholder="مرتجع خلال يومين من تاريخ الفاتورة" style="font-size:1.05rem">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-semibold">نص الاستبدال (يظهر في الفاتورة)</label>
+            <input type="text" name="exchange_policy" class="form-control"
+                   value="{{ settings.exchange_policy or 'استبدال خلال 14 يوم من تاريخ الفاتورة' }}"
+                   placeholder="استبدال خلال 14 يوم من تاريخ الفاتورة" style="font-size:1.05rem">
+          </div>
+        </div>
+
+        <hr>
+
+        <!-- Backup -->
+        <h6 class="card-box-title mt-2"><i class="bi bi-cloud-upload me-2"></i>النسخ الاحتياطي</h6>
+        <div class="col-12">
+          <label class="form-label fw-semibold">مسار مجلد Google Drive / OneDrive</label>
+          <input type="text" name="backup_path" class="form-control font-monospace"
+                 value="{{ settings.backup_path }}"
+                 placeholder="{{ drive_path or 'C:/Users/.../Google Drive' }}" style="font-size:1.05rem">
+          {% if drive_path %}
+            <div class="form-text text-success">
+              <i class="bi bi-check-circle me-1"></i>
+              تم اكتشاف: {{ drive_path }}
+            </div>
+          {% else %}
+            <div class="form-text">اكتب المسار يدوياً لو لم يتم الاكتشاف تلقائياً</div>
+          {% endif %}
+        </div>
+
+        <hr>
+
+        <!-- Printer -->
+        <h6 class="card-box-title mt-2"><i class="bi bi-printer me-2"></i>الطابعة الحرارية (طباعة مباشرة)</h6>
+        <div class="col-12">
+          <label class="form-label fw-semibold">اسم الطابعة</label>
+          <div class="d-flex gap-2">
+            <input type="text" name="printer_name" id="printer_name" class="form-control font-monospace"
+                   value="{{ settings.printer_name or '' }}"
+                   placeholder="مثال: XP-N160II" style="font-size:1.05rem">
+            <button type="button" class="btn btn-md btn-outline-secondary" onclick="listPrinters()">
+              <i class="bi bi-search me-1"></i>اكتشاف
+            </button>
+          </div>
+          <div id="printer-list" class="mt-2"></div>
+          <div class="form-text">
+            لو فارغ → الفاتورة تفتح في المتصفح.<br>
+            لو فيه اسم طابعة → بتطبع تلقائي بدون أي نافذة.
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-success btn-md mt-3">
+          <i class="bi bi-check2-circle me-2"></i>حفظ الإعدادات
+        </button>
+      </form>
+    </div>
+
+    <!-- Categories Management -->
+    <div class="card-box mb-3">
+      <h6 class="card-box-title"><i class="bi bi-tags me-2"></i>فئات المنتجات</h6>
+      <div id="cats-list" class="d-flex flex-wrap gap-2 mb-3">
+        {% for cat in categories %}
+        <span class="badge bg-primary-soft text-primary fs-6 d-flex align-items-center gap-1"
+              id="cat-badge-{{ loop.index }}" data-name="{{ cat }}"
+              style="font-size:.95rem; padding:8px 12px">
+          {{ cat }}
+          <button type="button" class="btn-close btn-close-sm ms-1"
+                  style="font-size:.7rem"
+                  onclick='deleteCategory({{ cat|tojson }}, this.parentElement)'
+                  title="حذف الفئة"></button>
+        </span>
+        {% endfor %}
+      </div>
+      <div class="d-flex gap-2">
+        <input type="text" id="new-cat-input" class="form-control" style="max-width:220px; font-size:1.05rem"
+               placeholder="اسم الفئة الجديدة..." maxlength="40">
+        <button class="btn btn-md btn-outline-primary" onclick="addCategory()">
+          <i class="bi bi-plus-lg me-1"></i>إضافة
+        </button>
+      </div>
+      <div id="cat-msg" class="mt-2"></div>
+    </div>
+
+    <!-- Restore from Excel Backup -->
+    <div class="card-box mb-3" style="border-right:4px solid #6366f1">
+      <h6 class="card-box-title"><i class="bi bi-file-earmark-arrow-up me-2"></i>استيراد بيانات من نسخة Excel</h6>
+      <div class="alert alert-warning d-flex gap-2 align-items-start py-2 mb-3" style="font-size:.92rem">
+        <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+        <div>
+          ارفع ملف النسخة الاحتياطية (<code>shop_XXXXXX.xlsx</code>) وسيتم استيراد المنتجات والفواتير والمرتجعات.<br>
+          البيانات الموجودة بنفس الأرقام سيتم استبدالها. إعدادات الطابعة ومسار الباكب <strong>لن تتغير</strong>.
+        </div>
+      </div>
+      <form method="POST" action="{{ url_for('settings.settings_restore') }}"
+            enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+          <input type="file" name="restore_file" accept=".xlsx"
+                 class="form-control" style="max-width:320px;font-size:1rem" required>
+          <button type="submit" class="btn btn-md btn-primary"
+                  onclick="return confirm('هل أنت متأكد من استيراد البيانات؟\nالبيانات بنفس الأرقام ستُستبدل.')">
+            <i class="bi bi-upload me-1"></i>استيراد
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Google Drive Account -->
+    <div class="card-box mb-3">
+      <h6 class="card-box-title"><i class="bi bi-google me-2"></i>ربط حساب Google Drive</h6>
+
+      {% if drive_email %}
+        <div class="d-flex align-items-center gap-3 p-3 bg-success-soft rounded mb-3">
+          <i class="bi bi-check-circle-fill text-success fs-4"></i>
+          <div>
+            <div class="fw-bold" style="font-size:1.05rem">متصل بـ Google Drive</div>
+            <div class="text-muted small">{{ drive_email }}</div>
+          </div>
+        </div>
+        <div class="d-flex gap-2">
+          <button onclick="doDriveBackup(this)" class="btn btn-md btn-outline-primary">
+            <i class="bi bi-cloud-upload me-1"></i>رفع نسخة الآن
+          </button>
+          <form method="POST" action="/api/drive/disconnect"
+                onsubmit="return confirm('هل تريد فصل الحساب؟')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-md btn-outline-danger">
+              <i class="bi bi-x-circle me-1"></i>فصل الحساب
+            </button>
+          </form>
+        </div>
+      {% else %}
+        <p class="text-muted mb-3" style="font-size:1rem">
+          ربّط حساب Gmail عشان البيانات تتحفظ على Google Drive بتاعك تلقائياً.<br>
+          تقدر تغير الحساب في أي وقت.
+        </p>
+
+        {% if not has_creds %}
+        <div class="alert alert-warning" style="font-size:.95rem">
+          <strong>خطوة مطلوبة قبل الربط:</strong>
+          <ol class="mb-1 mt-1">
+            <li>روح <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+            <li>اعمل مشروع جديد → افتح <strong>APIs & Services → Credentials</strong></li>
+            <li>اضغط <strong>Create Credentials → OAuth 2.0 Client ID</strong></li>
+            <li>اختار <strong>Desktop App</strong> ← حمّل الملف</li>
+            <li>سمّيه <code>google_credentials.json</code> وحطه في مجلد البرنامج</li>
+            <li>فعّل <strong>Google Drive API</strong> من المشروع نفسه</li>
+          </ol>
+          <a href="https://console.cloud.google.com/" target="_blank" class="btn btn-warning btn-md mt-1">
+            <i class="bi bi-box-arrow-up-right me-1"></i>افتح Google Cloud Console
+          </a>
+        </div>
+        {% else %}
+        <a href="/api/drive/connect" class="btn btn-md btn-primary">
+          <i class="bi bi-google me-2"></i>ربط حساب Gmail
+        </a>
+        {% endif %}
+      {% endif %}
+      <div id="drive-msg" class="mt-2"></div>
+    </div>
+
+    <!-- Mobile QR Access -->
+    <div class="card-box mb-3">
+      <h6 class="card-box-title"><i class="bi bi-qr-code me-2"></i>الوصول من الموبايل</h6>
+      <p class="text-muted mb-3" style="font-size:1rem">
+        افتح الكاميرا أو أي تطبيق سكانر واسكن الكود عشان تفتح البرنامج من موبايلك مباشرة.<br>
+        <small>لازم الموبايل يكون على نفس الشبكة (WiFi).</small>
+      </p>
+      <div class="text-center">
+        <div id="qr-spinner" class="mb-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>
+        <img id="qr-img" src="" alt="QR Code"
+             style="max-width:180px;display:none;border:1px solid #e2e8f0;border-radius:8px;padding:6px">
+        <div id="qr-url" class="text-primary fw-semibold mt-2 font-monospace" style="font-size:1rem"></div>
+        <div class="text-muted mt-1" style="font-size:.85rem">البورت: 5000</div>
+      </div>
+    </div>
+
+    <!-- Manual backup -->
+    <div class="card-box">
+      <h6 class="card-box-title"><i class="bi bi-cloud-arrow-up me-2"></i>نسخ احتياطي محلي</h6>
+      <p class="text-muted" style="font-size:1rem">
+        يتم تلقائياً كل 15 دقيقة.<br>
+        آخر نسخة: <strong>{{ settings.last_backup or 'لم يتم بعد' }}</strong>
+      </p>
+      <button class="btn btn-md btn-outline-primary" onclick="doBackup(this)">
+        <i class="bi bi-cloud-upload me-2"></i>نسخ احتياطي الآن
+      </button>
+      <div id="backup-msg" class="mt-2"></div>
+    </div>
+
+    <!-- Danger Zone -->
+    <div class="card-box mb-3" id="danger-zone"
+         style="border-right:4px solid #dc3545; display:none">
+      <h6 class="card-box-title text-danger"><i class="bi bi-exclamation-octagon me-2"></i>منطقة الخطر</h6>
+      <p class="text-muted" style="font-size:.95rem">
+        حذف جميع البيانات (المنتجات، الفواتير، المرتجعات، العملاء، الموردين، حركات المخزون).<br>
+        <strong>هذا الإجراء لا يمكن التراجع عنه.</strong>
+      </p>
+      <button type="button" class="btn btn-outline-danger btn-md"
+              data-bs-toggle="modal" data-bs-target="#resetModal">
+        <i class="bi bi-trash3 me-2"></i>حذف جميع البيانات
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Reset Modal -->
+<div class="modal fade" id="resetModal" tabindex="-1" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-danger">
+        <h5 class="modal-title text-danger fw-bold">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>تأكيد حذف جميع البيانات
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                onclick="resetConfirmInput()"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-danger" style="font-size:.95rem">
+          سيتم حذف جميع المنتجات والفواتير والمرتجعات والعملاء والموردين وحركات المخزون.<br>
+          الإعدادات وحساب المدير <strong>لن يُحذفا</strong>.
+        </div>
+        <label class="form-label fw-semibold">اكتب الكود للتأكيد:</label>
+        <input type="password" id="reset-code-input" class="form-control text-center"
+               style="font-size:1.2rem; letter-spacing:4px; max-width:180px"
+               placeholder="••••••" maxlength="10" oninput="checkResetCode()">
+        <div id="reset-code-msg" class="mt-2" style="font-size:.9rem"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-md" data-bs-dismiss="modal"
+                onclick="resetConfirmInput()">إلغاء</button>
+        <button type="button" class="btn btn-danger btn-md" id="reset-confirm-btn"
+                disabled onclick="doResetAllData(this)">
+          <i class="bi bi-trash3 me-1"></i>تأكيد الحذف
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
+async function doDriveBackup(btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جاري الرفع...';
+  const res  = await fetch('/api/drive/backup', { method: 'POST' });
+  const data = await res.json();
+  const msg  = document.getElementById('drive-msg');
+  msg.innerHTML = data.success
+    ? `<div class="alert alert-success p-2" style="font-size:1rem">✓ ${data.message}</div>`
+    : `<div class="alert alert-danger p-2" style="font-size:1rem">✗ ${data.message}</div>`;
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-cloud-upload me-1"></i>رفع نسخة الآن';
+}
+
+async function listPrinters() {
+  const res   = await fetch('/api/printers');
+  const list  = await res.json();
+  const el    = document.getElementById('printer-list');
+  if (!list.length) { el.innerHTML = '<small class="text-muted">لا توجد طابعات مثبتة</small>'; return; }
+  el.innerHTML = '<div class="d-flex flex-wrap gap-2 mt-1">' +
+    list.map(p => `<button type="button" class="btn btn-md btn-outline-primary"
+      onclick='document.getElementById("printer_name").value=${JSON.stringify(p)}'>${escapeHtml(p)}</button>`).join('') +
+  '</div>';
+}
+
+async function doBackup(btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جاري الحفظ...';
+  const res  = await fetch('/api/backup', { method: 'POST' });
+  const data = await res.json();
+  const msg  = document.getElementById('backup-msg');
+  if (data.success) {
+    msg.innerHTML = `<div class="alert alert-success p-2" style="font-size:1rem">✓ ${data.message}</div>`;
+  } else {
+    msg.innerHTML = `<div class="alert alert-danger p-2" style="font-size:1rem">✗ ${data.error}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-cloud-upload me-2"></i>نسخ احتياطي الآن';
+}
+
+/* ── Categories ─────────────────────────────────────────────────────────────── */
+async function addCategory() {
+  const input = document.getElementById('new-cat-input');
+  const name  = input.value.trim();
+  if (!name) return;
+
+  const res  = await fetch('/api/categories/add', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  });
+  const data = await res.json();
+  const msg  = document.getElementById('cat-msg');
+
+  if (data.success) {
+    input.value = '';
+    refreshCatBadges(data.categories);
+    msg.innerHTML = `<div class="alert alert-success p-2" style="font-size:1rem">تم إضافة "${name}" ✓</div>`;
+    setTimeout(() => msg.innerHTML = '', 2500);
+  } else {
+    msg.innerHTML = `<div class="alert alert-danger p-2" style="font-size:1rem">${data.error}</div>`;
+  }
+}
+
+async function deleteCategory(name, badge) {
+  if (!confirm(`حذف فئة "${name}"؟`)) return;
+  const msg = document.getElementById('cat-msg');
+  try {
+    const res  = await fetch('/api/categories/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (data.success) {
+      badge.remove();
+      msg.innerHTML = `<div class="alert alert-success p-2" style="font-size:1rem">تم حذف "${name}" ✓</div>`;
+      setTimeout(() => msg.innerHTML = '', 2500);
+    } else {
+      msg.innerHTML = `<div class="alert alert-danger p-2" style="font-size:1rem">${data.error || 'فشل الحذف'}</div>`;
+    }
+  } catch (e) {
+    msg.innerHTML = `<div class="alert alert-danger p-2" style="font-size:1rem">خطأ في الاتصال بالخادم</div>`;
+  }
+}
+
+function refreshCatBadges(categories) {
+  const list = document.getElementById('cats-list');
+  list.innerHTML = categories.map(cat => `
+    <span class="badge bg-primary-soft text-primary fs-6 d-flex align-items-center gap-1" data-name="${escapeHtml(cat)}"
+          style="font-size:.95rem; padding:8px 12px">
+      ${escapeHtml(cat)}
+      <button type="button" class="btn-close btn-close-sm ms-1" style="font-size:.7rem"
+              onclick='deleteCategory(${JSON.stringify(cat)}, this.parentElement)'
+              title="حذف الفئة"></button>
+    </span>
+  `).join('');
+}
+
+// Add category on Enter key
+document.getElementById('new-cat-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addCategory(); }
+});
+
+async function loadNetworkQR() {
+  try {
+    const res  = await fetch('/api/network-qr');
+    const data = await res.json();
+    document.getElementById('qr-spinner').style.display = 'none';
+    const img  = document.getElementById('qr-img');
+    img.src    = data.qr;
+    img.style.display = 'block';
+    document.getElementById('qr-url').textContent = data.url;
+  } catch (e) {
+    document.getElementById('qr-spinner').style.display = 'none';
+    document.getElementById('qr-url').textContent = 'تعذر تحميل QR';
+  }
+}
+loadNetworkQR();
+
+/* ── Danger Zone ───────────────────────────────────────────────────────────── */
+(function() {
+  let seq = '';
+  const TARGET = '001100';
+  document.addEventListener('keydown', function(e) {
+    seq += e.key;
+    if (seq.length > TARGET.length) seq = seq.slice(-TARGET.length);
+    if (seq === TARGET) {
+      seq = '';
+      document.getElementById('danger-zone').style.display = 'block';
+      document.getElementById('danger-zone').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+})();
+
+function checkResetCode() {
+  const val = document.getElementById('reset-code-input').value;
+  const btn = document.getElementById('reset-confirm-btn');
+  const msg = document.getElementById('reset-code-msg');
+  if (val === '001100') {
+    btn.disabled = false;
+    msg.innerHTML = '<span class="text-danger"><i class="bi bi-unlock me-1"></i>الكود صحيح — يمكنك المتابعة</span>';
+  } else {
+    btn.disabled = true;
+    msg.innerHTML = val.length > 0
+      ? '<span class="text-muted">الكود غير صحيح</span>'
+      : '';
+  }
+}
+
+function resetConfirmInput() {
+  const inp = document.getElementById('reset-code-input');
+  if (inp) inp.value = '';
+  const btn = document.getElementById('reset-confirm-btn');
+  if (btn) btn.disabled = true;
+  const msg = document.getElementById('reset-code-msg');
+  if (msg) msg.innerHTML = '';
+}
+
+async function doResetAllData(btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>جاري الحذف...';
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  try {
+    const res = await fetch('/api/reset-all-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+      body: JSON.stringify({ code: '001100' })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.querySelector('#resetModal .btn-close')?.click();
+      resetConfirmInput();
+      document.getElementById('danger-zone').style.display = 'none';
+      alert('تم حذف جميع البيانات بنجاح.');
+      window.location.reload();
+    } else {
+      alert('خطأ: ' + (data.error || 'فشل الحذف'));
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-trash3 me-1"></i>تأكيد الحذف';
+    }
+  } catch (e) {
+    alert('خطأ في الاتصال بالخادم');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-trash3 me-1"></i>تأكيد الحذف';
+  }
+}
+</script>
+{% endblock %}

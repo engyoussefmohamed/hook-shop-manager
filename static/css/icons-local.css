@@ -1,0 +1,60 @@
+.bi {
+  display: inline-block;
+  min-width: 1em;
+  text-align: center;
+  font-style: normal;
+  line-height: 1;
+}
+.bi::before { font-weight: 700; }
+.bi-shop-window::before { content: "▣"; }
+.bi-speedometer2::before { content: "◷"; }
+.bi-cart3::before { content: "▤"; }
+.bi-box-seam::before { content: "□"; }
+.bi-graph-up-arrow::before, .bi-graph-up::before { content: "↗"; }
+.bi-gear::before { content: "⚙"; }
+.bi-cash-stack::before { content: "$"; }
+.bi-receipt::before { content: "≡"; }
+.bi-tag::before { content: "#"; }
+.bi-exclamation-triangle::before { content: "!"; }
+.bi-bar-chart-line::before { content: "▥"; }
+.bi-trophy::before { content: "★"; }
+.bi-plus-lg::before, .bi-plus-circle::before { content: "+"; }
+.bi-search::before { content: "⌕"; }
+.bi-qr-code::before, .bi-upc-scan::before { content: "▦"; }
+.bi-pencil::before { content: "✎"; }
+.bi-trash::before { content: "×"; }
+.bi-download::before { content: "↓"; }
+.bi-printer::before { content: "▣"; }
+.bi-check2-circle::before, .bi-check-circle::before, .bi-check-circle-fill::before { content: "✓"; }
+.bi-x-circle::before { content: "×"; }
+.bi-cloud-upload::before, .bi-cloud-arrow-up::before { content: "↑"; }
+.bi-google::before { content: "G"; }
+.bi-box-arrow-up-right::before { content: "↗"; }
+.bi-calendar3::before { content: "□"; }
+.bi-list-ul::before { content: "☰"; }
+.bi-file-earmark-excel::before { content: "X"; }
+.bi-chevron-right::before { content: "›"; }
+.bi-chevron-left::before { content: "‹"; }
+.bi-shop::before { content: "▣"; }
+.bi-arrow-return-left::before { content: "↵"; }
+.bi-arrow-right::before { content: "→"; }
+.bi-bar-chart::before { content: "▥"; }
+.bi-box-arrow-in-right::before { content: "⊕"; }
+.bi-calendar-check::before { content: "☐"; }
+.bi-cash::before { content: "¢"; }
+.bi-clock-history::before { content: "↻"; }
+.bi-exclamation-triangle-fill::before { content: "⚠"; }
+.bi-folder2-open::before { content: "☐"; }
+.bi-keyboard::before { content: "⌨"; }
+.bi-lightning-charge::before { content: "⚡"; }
+.bi-list-check::before { content: "☰"; }
+.bi-pause-circle::before { content: "⏸"; }
+.bi-people::before { content: "👥"; }
+.bi-shield-check::before { content: "✓"; }
+.bi-shield-lock::before { content: "🔒"; }
+.bi-tags::before { content: "🏷"; }
+.bi-tools::before { content: "⚒"; }
+.bi-truck::before { content: "🚚"; }
+.bi-upload::before { content: "↑"; }
+.bi-wallet2::before { content: "💰"; }
+.bi-x-lg::before { content: "×"; }

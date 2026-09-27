@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}مهام سريعة{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h4 class="mb-1"><i class="bi bi-lightning-charge me-2"></i>مهام سريعة</h4>
+    <small class="text-muted">اليوم: {{ now }}</small>
+  </div>
+</div>
+
+<div class="quick-grid mb-4">
+  <a class="quick-tile" href="{{ url_for('pos.pos') }}">
+    <i class="bi bi-cart3"></i>
+    <div><div class="quick-title">بيع جديد</div><div class="quick-sub">افتح نقطة البيع</div></div>
+  </a>
+  <a class="quick-tile" href="{{ url_for('products.products_add') }}">
+    <i class="bi bi-plus-circle"></i>
+    <div><div class="quick-title">إضافة منتج</div><div class="quick-sub">منتج واحد بسرعة</div></div>
+  </a>
+  <a class="quick-tile" href="{{ url_for('products.products') }}">
+    <i class="bi bi-upload"></i>
+    <div><div class="quick-title">استيراد Excel</div><div class="quick-sub">من شاشة المنتجات</div></div>
+  </a>
+  <a class="quick-tile" href="{{ url_for('products.products', low=1) }}">
+    <i class="bi bi-exclamation-triangle"></i>
+    <div><div class="quick-title">المنتجات الناقصة</div><div class="quick-sub">{{ low_stock|length }} منتج</div></div>
+  </a>
+  <a class="quick-tile" href="{{ url_for('inventory.inventory_page') }}">
+    <i class="bi bi-clipboard-check"></i>
+    <div><div class="quick-title">جرد سريع</div><div class="quick-sub">باركود وكمية فعلية</div></div>
+  </a>
+  <a class="quick-tile" href="{{ url_for('reports.reports') }}">
+    <i class="bi bi-graph-up-arrow"></i>
+    <div><div class="quick-title">تقرير اليوم</div><div class="quick-sub">مبيعات وربح</div></div>
+  </a>
+  <button class="quick-tile border-0 text-start" type="button" onclick="doQuickBackup(this)">
+    <i class="bi bi-cloud-upload"></i>
+    <div>
+      <div class="quick-title">نسخة احتياطية</div>
+      <div class="quick-sub" id="last-backup-sub">
+        {% if settings and settings.last_backup %}آخر نسخة: {{ settings.last_backup[:10] }}{% else %}حفظ الآن{% endif %}
+      </div>
+    </div>
+  </button>
+</div>
+
+<div class="row g-3">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack text-success"></i></div>
+      <div class="stat-label">مبيعات اليوم</div>
+      <div class="stat-value text-success">{{ "%.2f"|format(stats.revenue) }} ج</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-primary-soft"><i class="bi bi-receipt text-primary"></i></div>
+      <div class="stat-label">الفواتير</div>
+      <div class="stat-value text-primary">{{ stats.count }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#f0fdf4">
+        <i class="bi bi-graph-up" style="color:#059669"></i>
+      </div>
+      <div class="stat-label">الربح</div>
+      <div class="stat-value" style="color:#059669">{{ "%.2f"|format(stats.profit) }} ج</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-danger-soft"><i class="bi bi-exclamation-triangle text-danger"></i></div>
+      <div class="stat-label">المنتجات الناقصة</div>
+      <div class="stat-value text-danger">{{ low_stock|length }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- Backup toast -->
+<div id="backup-toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(120%);
+     transition:transform .3s ease;z-index:9999;min-width:280px;max-width:90vw">
+  <div id="backup-toast-inner" class="d-flex align-items-center gap-2 px-4 py-3 rounded-3 shadow fw-semibold"
+       style="background:#fff;border:2px solid #e2e8f0;font-size:1rem"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showBackupToast(msg, ok) {
+  const toast = document.getElementById('backup-toast');
+  const inner = document.getElementById('backup-toast-inner');
+  if (!toast || !inner) return;
+  inner.style.borderColor = ok ? '#22c55e' : '#ef4444';
+  inner.innerHTML = `<i class="bi ${ok ? 'bi-check-circle-fill text-success' : 'bi-x-circle-fill text-danger'}" style="font-size:1.3rem"></i>${msg}`;
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(() => { toast.style.transform = 'translateX(-50%) translateY(120%)'; }, 3500);
+}
+
+async function doQuickBackup(btn) {
+  const sub = document.getElementById('last-backup-sub');
+  btn.disabled = true;
+  const origHTML = btn.innerHTML;
+  btn.querySelector('.quick-sub').textContent = 'جاري الحفظ...';
+  try {
+    const res  = await fetch('/api/backup', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      const today = new Date().toISOString().slice(0, 10);
+      if (sub) sub.textContent = 'آخر نسخة: ' + today;
+      showBackupToast(data.message || 'تم حفظ النسخة الاحتياطية ✓', true);
+    } else {
+      btn.innerHTML = origHTML;
+      showBackupToast(data.error || 'تعذر حفظ النسخة', false);
+    }
+  } catch {
+    btn.innerHTML = origHTML;
+    showBackupToast('تعذر الاتصال بالخادم', false);
+  }
+  btn.disabled = false;
+}
+</script>
+{% endblock %}

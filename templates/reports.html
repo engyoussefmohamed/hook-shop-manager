@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+{% block title %}التقارير{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0"><i class="bi bi-graph-up-arrow me-2"></i>التقارير</h4>
+  <div class="d-flex gap-2 align-items-center flex-wrap">
+    <!-- Quick date shortcuts -->
+    <div class="btn-group btn-group-sm" role="group">
+      <button type="button" class="btn btn-outline-primary" onclick="setDate('today')">اليوم</button>
+      <button type="button" class="btn btn-outline-secondary" onclick="setDate('yesterday')">أمس</button>
+      <button type="button" class="btn btn-outline-secondary" onclick="setDate('week')">هذا الأسبوع</button>
+      <button type="button" class="btn btn-outline-secondary" onclick="setDate('month')">هذا الشهر</button>
+    </div>
+    <form class="d-flex gap-2 align-items-center" method="GET" id="filter-form">
+      <input type="date" name="date" value="{{ selected_date }}" class="form-control" style="width:180px">
+      <button type="submit" class="btn btn-md btn-primary">عرض</button>
+    </form>
+    <a href="{{ url_for('reports.reports_export') }}{% if selected_date %}?from={{ selected_date }}&to={{ selected_date }}{% endif %}"
+       class="btn btn-md btn-success">
+      <i class="bi bi-file-earmark-excel me-1"></i>تصدير Excel
+    </a>
+  </div>
+</div>
+
+<!-- Period Stats -->
+<div class="card-box mb-4" style="border-right:4px solid #6366f1">
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+      <h6 class="mb-0 fw-bold" style="color:#4f46e5">
+        <i class="bi bi-bar-chart-line me-2"></i>إجمالي الفترة
+      </h6>
+      <small class="text-muted">منذ {{ period_start }}</small>
+    </div>
+    <button class="btn btn-sm btn-outline-danger" onclick="resetPeriod(this)">
+      <i class="bi bi-arrow-counterclockwise me-1"></i>تصفير وبداية جديدة
+    </button>
+  </div>
+  <div class="row g-3">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card" style="background:#f5f3ff">
+        <div class="stat-icon" style="background:#ede9fe"><i class="bi bi-cash-stack" style="color:#6d28d9"></i></div>
+        <div class="stat-label">إجمالي الإيرادات</div>
+        <div class="stat-value" style="color:#6d28d9">{{ "%.2f"|format(period_stats.revenue) }} ج</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card" style="background:#f5f3ff">
+        <div class="stat-icon" style="background:#ede9fe"><i class="bi bi-receipt" style="color:#6d28d9"></i></div>
+        <div class="stat-label">عدد الفواتير</div>
+        <div class="stat-value" style="color:#6d28d9">{{ period_stats.count }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card" style="background:#f5f3ff">
+        <div class="stat-icon" style="background:#ede9fe"><i class="bi bi-tag" style="color:#6d28d9"></i></div>
+        <div class="stat-label">إجمالي الخصومات</div>
+        <div class="stat-value" style="color:#6d28d9">{{ "%.2f"|format(period_stats.discount) }} ج</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card" style="background:#f5f3ff">
+        <div class="stat-icon" style="background:#ede9fe"><i class="bi bi-graph-up" style="color:#6d28d9"></i></div>
+        <div class="stat-label">صافي الربح</div>
+        <div class="stat-value" style="color:#6d28d9">{{ "%.2f"|format(period_stats.profit) }} ج</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Daily Stats -->
+<div class="d-flex align-items-center gap-2 mb-2">
+  <h6 class="mb-0 fw-semibold text-muted">
+    <i class="bi bi-calendar-day me-1"></i>
+    {% if selected_date %}يوم {{ selected_date }}{% else %}اليوم{% endif %}
+  </h6>
+</div>
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-success-soft"><i class="bi bi-cash-stack text-success"></i></div>
+      <div class="stat-label">الإيرادات</div>
+      <div class="stat-value text-success">{{ "%.2f"|format(stats.revenue) }} ج</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-primary-soft"><i class="bi bi-receipt text-primary"></i></div>
+      <div class="stat-label">عدد الفواتير</div>
+      <div class="stat-value text-primary">{{ stats.count }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon bg-warning-soft"><i class="bi bi-tag text-warning"></i></div>
+      <div class="stat-label">إجمالي الخصومات</div>
+      <div class="stat-value text-warning">{{ "%.2f"|format(stats.discount) }} ج</div>
+    </div>
+  </div>
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#f0fdf4">
+        <i class="bi bi-graph-up" style="color:#059669"></i>
+      </div>
+      <div class="stat-label">صافي الربح</div>
+      <div class="stat-value" style="color:#059669">{{ "%.2f"|format(stats.profit) }} ج</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Chart 30 days -->
+  <div class="col-lg-8">
+    <div class="card-box">
+      <h6 class="card-box-title"><i class="bi bi-calendar3 me-2"></i>آخر 30 يوم</h6>
+      <canvas id="dailyChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <!-- Top products -->
+  <div class="col-lg-4">
+    <div class="card-box">
+      <h6 class="card-box-title"><i class="bi bi-trophy me-2"></i>الأكثر مبيعاً (الكل)</h6>
+      {% for p in top_products %}
+      <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+        <span style="font-size:1rem">{{ loop.index }}. {{ p.product_name }}</span>
+        <span class="badge bg-success-soft text-success" style="font-size:.95rem">{{ p.total_qty }}</span>
+      </div>
+      {% else %}
+      <p class="text-muted text-center py-3">لا توجد بيانات</p>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card-box">
+      <h6 class="card-box-title mb-0"><i class="bi bi-wallet2 me-2"></i>تقفيل اليوم حسب طريقة الدفع</h6>
+      <div class="row g-2">
+        {% for p in payments %}
+        <div class="col-6 col-md-3">
+          <div class="border rounded p-3 bg-light">
+            <div class="text-muted" style="font-size:.95rem">{{ p.payment_method }}</div>
+            <div class="fw-bold" style="font-size:1.1rem">{{ "%.2f"|format(p.total) }} ج</div>
+            <div class="text-muted small">{{ p.count }} فاتورة</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="col-12 text-muted text-center py-2">لا توجد مدفوعات اليوم</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/charts-local.js') }}"></script>
+<script>
+const days    = {{ chart_data | map(attribute='day')     | list | tojson }};
+const amounts = {{ chart_data | map(attribute='revenue') | list | tojson }};
+drawLineChart(document.getElementById('dailyChart'), {
+  labels: days,
+  values: amounts,
+  color: '#22c55e'
+});
+
+function setDate(type) {
+  const today = new Date();
+  const fmt = d => d.toISOString().slice(0, 10);
+  if (type === 'today') {
+    window.location = '?date=' + fmt(today);
+  } else if (type === 'yesterday') {
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    window.location = '?date=' + fmt(y);
+  } else if (type === 'week') {
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay());
+    window.location = '?from=' + fmt(start) + '&to=' + fmt(today);
+  } else if (type === 'month') {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    window.location = '?from=' + fmt(start) + '&to=' + fmt(today);
+  }
+}
+
+async function resetPeriod(btn) {
+  if (!confirm('هل تريد تصفير الأرقام والبدء من اليوم؟\nالبيانات القديمة لن تُحذف.')) return;
+  btn.disabled = true;
+  const res  = await fetch('/api/reports/reset-period', { method: 'POST' });
+  const data = await res.json();
+  if (data.success) {
+    location.reload();
+  } else {
+    alert('حدث خطأ');
+    btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

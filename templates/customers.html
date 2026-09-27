@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}عملاء وديون{% endblock %}
+{% block content %}
+<div class="page-header"><h4 class="mb-0"><i class="bi bi-people me-2"></i>عملاء وديون</h4></div>
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card-box">
+      <h6 class="card-box-title">إضافة عميل</h6>
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="add">
+        <label class="form-label fw-semibold">اسم العميل</label>
+        <input name="name" class="form-control mb-2" placeholder="اسم العميل" required style="font-size:1.05rem">
+        <label class="form-label fw-semibold">تليفون</label>
+        <input name="phone" class="form-control mb-2" placeholder="تليفون" style="font-size:1.05rem">
+        <label class="form-label fw-semibold">ملاحظات</label>
+        <textarea name="notes" class="form-control mb-2" placeholder="ملاحظات" style="font-size:1.05rem"></textarea>
+        <button class="btn btn-md btn-success w-100">حفظ</button>
+      </form>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card-box p-0">
+      <div class="p-2 border-bottom">
+        <input type="search" id="customer-search" class="form-control"
+               placeholder="ابحث باسم العميل أو التليفون..."
+               oninput="filterCustomers(this.value)" style="font-size:1rem">
+      </div>
+      <div class="table-scroll-y">
+      <table class="table table-hover align-middle mb-0">
+        <thead><tr><th>العميل</th><th>التليفون</th><th>الرصيد</th><th>ملاحظات</th><th style="width:180px">إجراءات</th></tr></thead>
+        <tbody>
+        {% for c in customers %}
+        <tr data-name="{{ c.name | lower }}" data-phone="{{ c.phone or '' }}">
+          <td class="fw-bold">{{ c.name }}</td>
+          <td>{{ c.phone }}</td>
+          <td class="{{ 'text-danger fw-bold' if c.balance else '' }}">{{ "%.2f"|format(c.balance) }} ج</td>
+          <td>{{ c.notes }}</td>
+          <td>
+            <div class="d-flex gap-1 flex-wrap">
+              {% if c.balance > 0 %}
+              <form method="POST" class="d-inline-flex gap-1 align-items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="pay">
+                <input type="hidden" name="id" value="{{ c.id }}">
+                <input name="amount" type="number" min="0" step="0.01" max="{{ c.balance }}" class="form-control form-control-sm" placeholder="المبلغ" style="width:90px;font-size:.9rem" required>
+                <button class="btn btn-sm btn-outline-success" title="تسجيل دفع"><i class="bi bi-cash"></i></button>
+              </form>
+              {% endif %}
+              <button type="button" class="btn btn-sm btn-outline-primary" title="تعديل"
+                onclick="openEditCustomer({{ c.id }}, {{ c.name|tojson }}, {{ c.phone|tojson }}, {{ c.notes|tojson }})"><i class="bi bi-pencil"></i></button>
+              <form method="POST" class="d-inline" onsubmit="return confirm('هل أنت متأكد من حذف {{ c.name }}؟')">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="id" value="{{ c.id }}">
+                <button class="btn btn-sm btn-outline-danger" title="حذف"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center text-muted py-4">لا يوجد عملاء</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div class="modal fade" id="editCustomerModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="edit">
+        <input type="hidden" name="id" id="ec-id">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold"><i class="bi bi-pencil me-2"></i>تعديل العميل</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">اسم العميل</label>
+          <input name="name" id="ec-name" class="form-control mb-2" required style="font-size:1.05rem">
+          <label class="form-label fw-semibold">تليفون</label>
+          <input name="phone" id="ec-phone" class="form-control mb-2" style="font-size:1.05rem">
+          <label class="form-label fw-semibold">ملاحظات</label>
+          <textarea name="notes" id="ec-notes" class="form-control" style="font-size:1.05rem"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary btn-md" data-bs-dismiss="modal">إغلاق</button>
+          <button type="submit" class="btn btn-success btn-md"><i class="bi bi-check2-circle me-1"></i>حفظ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function filterCustomers(q) {
+  const term = q.trim().toLowerCase();
+  document.querySelectorAll('tbody tr[data-name]').forEach(row => {
+    const match = !term
+      || row.dataset.name.includes(term)
+      || (row.dataset.phone || '').includes(term);
+    row.style.display = match ? '' : 'none';
+  });
+}
+
+function openEditCustomer(id, name, phone, notes) {
+  document.getElementById('ec-id').value = id;
+  document.getElementById('ec-name').value = name;
+  document.getElementById('ec-phone').value = phone;
+  document.getElementById('ec-notes').value = notes;
+  new bootstrap.Modal(document.getElementById('editCustomerModal')).show();
+}
+</script>
+{% endblock %}

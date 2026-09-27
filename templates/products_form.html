@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ 'تعديل منتج' if product else 'إضافة منتج' }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h4 class="mb-0">
+    <i class="bi bi-{{ 'pencil' if product else 'plus-circle' }} me-2"></i>
+    {{ 'تعديل: ' + product.name if product else 'إضافة منتج جديد' }}
+  </h4>
+  <a href="{{ url_for('products.products') }}" class="btn btn-md btn-outline-secondary">
+    <i class="bi bi-arrow-right me-1"></i>رجوع
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card-box">
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row g-3">
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">اسم المنتج *</label>
+            <input type="text" name="name" class="form-control form-control-lg"
+                   value="{{ product.name if product else '' }}" required placeholder="مثال: تيشيرت قطن أبيض"
+                   style="font-size:1.1rem">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">الفئة</label>
+            <select name="category" class="form-select">
+              {% for cat in categories %}
+                <option value="{{ cat }}"
+                  {{ 'selected' if product and product.category == cat }}>
+                  {{ cat }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">سعر البيع (جنيه) *</label>
+            <input type="number" name="price" class="form-control" step="0.01" min="0"
+                   value="{{ product.price if product else '' }}" required style="font-size:1.1rem">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">سعر التكلفة (جنيه)</label>
+            <input type="number" name="cost_price" class="form-control" step="0.01" min="0"
+                   value="{{ product.cost_price if product else '' }}" placeholder="0" style="font-size:1.1rem">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">الكمية في المخزون</label>
+            <input type="number" name="quantity" class="form-control" min="0" step="1"
+                   value="{{ product.quantity if product else 0 }}" style="font-size:1.1rem">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">الحد الأدنى للتنبيه</label>
+            <input type="number" name="min_stock" class="form-control" min="0"
+                   value="{{ product.min_stock if product else 5 }}" style="font-size:1.1rem">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label fw-semibold">باركود / كود المنتج</label>
+            <input type="text" name="barcode" class="form-control font-monospace"
+                   value="{{ product.barcode if product else '' }}"
+                   placeholder="اتركه فارغاً وسيتم توليده تلقائياً" style="font-size:1.1rem">
+            <div class="form-text">يُستخدم هذا الكود مع جهاز السكانر</div>
+          </div>
+
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button type="submit" class="btn btn-success btn-lg flex-fill" style="font-size:1.1rem; padding:14px">
+            <i class="bi bi-check2-circle me-2"></i>
+            {{ 'حفظ التعديلات' if product else 'إضافة المنتج' }}
+          </button>
+          <a href="{{ url_for('products.products') }}" class="btn btn-outline-secondary btn-lg" style="font-size:1.1rem; padding:14px">إلغاء</a>
+        </div>
+      </form>
+    </div>
+
+    {% if product %}
+    <div class="card-box mt-3 text-center">
+      <h6 class="card-box-title"><i class="bi bi-qr-code me-2"></i>QR Code المنتج</h6>
+      <img src="{{ url_for('products.products_qr', pid=product.id) }}"
+           alt="QR" class="img-fluid" style="max-width:180px">
+      <p class="text-muted mt-2 small">{{ product.barcode }}</p>
+      <a href="{{ url_for('products.products_qr', pid=product.id) }}" download
+         class="btn btn-md btn-outline-primary">
+        <i class="bi bi-download me-1"></i>تحميل QR
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
